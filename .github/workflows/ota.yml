@@ -1,1 +1,38 @@
+name: Auto OTA Update
+
+on:
+  push:
+    paths:
+      - "*.bin"
+
+jobs:
+  update-firebase:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Get firmware file
+        id: file
+        run: |
+          FILE=$(ls *.bin | head -n 1)
+          echo "filename=$FILE" >> $GITHUB_OUTPUT
+
+      - name: Extract version
+        id: version
+        run: |
+          NAME=${{ steps.file.outputs.filename }}
+          VERSION=$(echo $NAME | sed 's/fw_v//' | sed 's/.bin//')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Update Firebase
+        run: |
+          curl -X PATCH \
+          "https://esp32dashboard-f0616-default-rtdb.asia-southeast1.firebasedatabase.app/ota.json?auth=${{ secrets.FIREBASE_DB_SECRET }}" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "latestVersion": "${{ steps.version.outputs.version }}",
+            "url": "https://raw.githubusercontent.com/Tuantran2k/esp-ota/main/${{ steps.file.outputs.filename }}",
+            "updateNow": false
+          }'
 
